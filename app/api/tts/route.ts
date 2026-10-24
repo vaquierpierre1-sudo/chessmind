@@ -107,8 +107,7 @@ export async function POST(request: Request) {
     if (error instanceof ElevenLabsError && error.statusCode === 402) {
       return NextResponse.json(
         {
-          error:
-            "The Ramesh voice is an ElevenLabs library voice. Your ElevenLabs plan needs Creator access or API credits to use it. Choose another voice, or add credits at elevenlabs.io/app/subscription/api.",
+          error: `The ${elevenLabsVoice?.label ?? "selected"} voice is an ElevenLabs library voice. Your ElevenLabs plan needs Creator access or API credits to use it. Choose another voice, or add credits at elevenlabs.io/app/subscription/api.`,
           code: "elevenlabs_payment_required",
         },
         { status: 402 },

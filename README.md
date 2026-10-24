@@ -11,7 +11,7 @@ ChessMind is designed to be fully usable without looking at the screen: every co
 - **Hear the turning points** — the three biggest mistakes are shown with the played move, Stockfish's preferred move, the evaluation swing, and the beginning of the engine's line.
 - **Talk to the coach** — ask by voice or text. The OpenAI-backed coach receives the exact Stockfish facts for the selected mistake, keeps a conversation history, and streams replies.
 - **Play blindfolded** — a real Stockfish opponent replies to moves spoken or typed in natural language, with hints, legal-move lists, full spoken board descriptions, undo, and audio controls.
-- **Choose a natural coach voice** — the ElevenLabs **Ramesh** voice, six OpenAI voices, live previews, persisted selection, and automatic fallback to the device voice if cloud speech is unavailable.
+- **Choose a natural coach voice** — the ElevenLabs **Ramesh** and **Sid** voices, six OpenAI voices, live previews, persisted selection, and automatic fallback to the device voice if cloud speech is unavailable.
 - **Use an optional board** — a visual board is available everywhere it matters, but it is never required.
 
 ## Quick start
@@ -94,7 +94,7 @@ The prompt forbids the model from inventing moves, evaluations, threats, or piec
 - A complete square-by-square spoken position description, available as speech and plain text.
 - Web Speech API speech-to-text with a persistent text fallback. The microphone button is simply disabled when the browser does not support it.
 - ElevenLabs and OpenAI natural speech for coach replies and blindfold announcements, with voice previews, speed and stop controls, per-message **Read aloud**, and automatic device-voice fallback.
-- The default **Ramesh** voice from ElevenLabs (Indian English), plus six OpenAI voices and a **Device voice** option for instant, offline speech.
+- The default **Ramesh** voice and an alternate **Sid** voice from ElevenLabs (both Indian English), plus six OpenAI voices and a **Device voice** option for instant, offline speech.
 - Live regions announce replies, errors, progress, listening state, and play-by-play when spoken audio is off.
 - `prefers-reduced-motion` and `prefers-contrast` support.
 
@@ -179,5 +179,5 @@ The test suite covers coordinate moves, SAN, castling, captures, promotion, ambi
 - The coach requires an OpenAI key. No fake coaching or analysis is provided without one.
 - Natural voices are billed per character by their providers. Every automatic blindfold announcement can trigger a TTS request, so choose **Device voice** if you want instant, zero-cost move announcements.
 - The ElevenLabs voice uses the server-only `ELEVENLABS_API_KEY` created by the official onboarding CLI. Do not commit `.env.local`.
-- Ramesh is an ElevenLabs **library voice**. ElevenLabs free accounts cannot synthesize library voices through the API; Creator access or API credits are required. ChessMind shows the reason and automatically uses the device voice when this happens.
+- Ramesh and Sid are ElevenLabs **library voices**. ElevenLabs free accounts cannot synthesize library voices through the API; Creator access or API credits are required. ChessMind shows the reason and automatically uses the device voice when this happens.
 - Stockfish is licensed under GPL-3.0. The `stockfish` npm package includes the engine and its license. Review that license before redistributing the app.

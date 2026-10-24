@@ -1,5 +1,5 @@
 export type OpenAIVoiceId = "sage" | "nova" | "shimmer" | "alloy" | "onyx" | "fable";
-export type ElevenLabsVoiceId = "ramesh";
+export type ElevenLabsVoiceId = "ramesh" | "sid";
 export type VoiceId = OpenAIVoiceId | ElevenLabsVoiceId | "device";
 export type VoiceProvider = "elevenlabs" | "openai" | "device";
 
@@ -12,6 +12,7 @@ export type VoiceOption = {
 };
 
 export const ELEVENLABS_RAMESH_ID = "7LIHJn2g4SPvZIQniujs";
+export const ELEVENLABS_SID_ID = "0muxiGNHAVvmM1qWRtyV";
 
 export const DEFAULT_VOICE_ID: VoiceId = "ramesh";
 
@@ -22,6 +23,13 @@ export const VOICE_OPTIONS: VoiceOption[] = [
     description: "Indian English · warm and conversational",
     provider: "elevenlabs",
     elevenLabsVoiceId: ELEVENLABS_RAMESH_ID,
+  },
+  {
+    id: "sid",
+    label: "Sid",
+    description: "Indian English · alternate coach voice",
+    provider: "elevenlabs",
+    elevenLabsVoiceId: ELEVENLABS_SID_ID,
   },
   { id: "sage", label: "Sage", description: "Warm and unhurried", provider: "openai" },
   { id: "nova", label: "Nova", description: "Bright and clear", provider: "openai" },
@@ -55,7 +63,7 @@ export function isOpenAIVoice(value: unknown): value is OpenAIVoiceId {
 }
 
 export function isElevenLabsVoice(value: unknown): value is ElevenLabsVoiceId {
-  return value === "ramesh";
+  return ELEVENLABS_VOICES.some((voice) => voice.id === value);
 }
 
 export function getElevenLabsVoice(value: unknown) {
