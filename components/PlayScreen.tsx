@@ -928,6 +928,11 @@ export function PlayScreen({
             </p>
           )}
 
+          {speech.notice && (
+            <p className="voice-warning" role="status">
+              {speech.notice}
+            </p>
+          )}
           <div className="voice-settings session-voice">
             {speech.supported ? (
               <>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import { ElevenLabsClient, ElevenLabsError } from "@elevenlabs/elevenlabs-js";
 import { getElevenLabsVoice, isOpenAIVoice, TTS_INSTRUCTIONS } from "@/lib/voices";
 
 export const runtime = "nodejs";
@@ -43,17 +43,23 @@ export async function POST(request: Request) {
         );
       }
       const elevenLabs = new ElevenLabsClient();
+      const elevenLabsModel = process.env.ELEVENLABS_TTS_MODEL ?? "eleven_v4";
+      const isV4 = elevenLabsModel.startsWith("eleven_v4");
       const stream = await elevenLabs.textToSpeech.convert(elevenLabsVoice.elevenLabsVoiceId!, {
         text,
-        modelId: process.env.ELEVENLABS_TTS_MODEL ?? "eleven_v4",
+        modelId: elevenLabsModel,
         languageCode: "en",
         outputFormat: "mp3_44100_128",
-        optimizeStreamingLatency: 2,
-        applyTextNormalization: "on",
+        ...(isV4
+          ? {}
+          : {
+              optimizeStreamingLatency: 2,
+              applyTextNormalization: "on" as const,
+            }),
         voiceSettings: {
           stability: 0.45,
           similarityBoost: 0.75,
-          useSpeakerBoost: true,
+          ...(isV4 ? {} : { useSpeakerBoost: true }),
         },
       });
       audio = Buffer.from(await new Response(stream).arrayBuffer());
@@ -97,6 +103,22 @@ export async function POST(request: Request) {
   } catch (error) {
     if (request.signal.aborted) {
       return new Response(null, { status: 499 });
+    }
+    if (error instanceof ElevenLabsError && error.statusCode === 402) {
+      return NextResponse.json(
+        {
+          error:
+            "The Ramesh voice is an ElevenLabs library voice. Your ElevenLabs plan needs Creator access or API credits to use it. Choose another voice, or add credits at elevenlabs.io/app/subscription/api.",
+          code: "elevenlabs_payment_required",
+        },
+        { status: 402 },
+      );
+    }
+    if (error instanceof ElevenLabsError && error.statusCode === 401) {
+      return NextResponse.json(
+        { error: "The ElevenLabs API key was rejected. Re-run the ElevenLabs onboarding or update ELEVENLABS_API_KEY." },
+        { status: 401 },
+      );
     }
     const message = error instanceof Error ? error.message : "Speech generation failed.";
     return NextResponse.json({ error: message }, { status: 502 });

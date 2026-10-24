@@ -140,6 +140,7 @@ export function useSpeech(rate = 1, voiceId: VoiceId = DEFAULT_VOICE_ID, cloudEn
   const [preparing, setPreparing] = useState(false);
   const [engine, setEngine] = useState<"openai" | "device" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
@@ -276,6 +277,7 @@ export function useSpeech(rate = 1, voiceId: VoiceId = DEFAULT_VOICE_ID, cloudEn
       stopPlayback();
       const sequence = ++sequenceRef.current;
       setError(null);
+      setNotice(null);
 
       const selectedVoice = voiceIdRef.current;
       if (!cloudEnabledRef.current || selectedVoice === "device") {
@@ -367,6 +369,11 @@ export function useSpeech(rate = 1, voiceId: VoiceId = DEFAULT_VOICE_ID, cloudEn
           if (controller.signal.aborted || sequence !== sequenceRef.current) return;
           clearAudio();
           const remaining = chunks.slice(currentChunk).join(" ").trim() || clean;
+          setNotice(
+            speechError instanceof Error
+              ? speechError.message
+              : "Natural voice was unavailable. Using your device voice.",
+          );
           const deviceStarted = speakWithDevice(remaining, sequence);
           if (!deviceStarted) {
             setPreparing(false);
@@ -395,5 +402,5 @@ export function useSpeech(rate = 1, voiceId: VoiceId = DEFAULT_VOICE_ID, cloudEn
     };
   }, [clearAudio]);
 
-  return { supported, speaking, preparing, engine, error, speak, cancel };
+  return { supported, speaking, preparing, engine, error, notice, speak, cancel };
 }

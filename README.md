@@ -179,4 +179,5 @@ The test suite covers coordinate moves, SAN, castling, captures, promotion, ambi
 - The coach requires an OpenAI key. No fake coaching or analysis is provided without one.
 - Natural voices are billed per character by their providers. Every automatic blindfold announcement can trigger a TTS request, so choose **Device voice** if you want instant, zero-cost move announcements.
 - The ElevenLabs voice uses the server-only `ELEVENLABS_API_KEY` created by the official onboarding CLI. Do not commit `.env.local`.
+- Ramesh is an ElevenLabs **library voice**. ElevenLabs free accounts cannot synthesize library voices through the API; Creator access or API credits are required. ChessMind shows the reason and automatically uses the device voice when this happens.
 - Stockfish is licensed under GPL-3.0. The `stockfish` npm package includes the engine and its license. Review that license before redistributing the app.

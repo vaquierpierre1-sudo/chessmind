@@ -454,6 +454,12 @@ export function CoachScreen({
             </div>
           </div>
 
+          {speech.notice && (
+            <p className="voice-warning" role="status">
+              {speech.notice}
+            </p>
+          )}
+
           {coachStatus?.coachConfigured === false ? (
             <div className="setup-card" role="status">
               <span className="setup-icon" aria-hidden="true">

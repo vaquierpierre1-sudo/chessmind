@@ -785,6 +785,17 @@ h2 em {
   font-size: 10.5px;
 }
 
+.voice-warning {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
 .chat-toolbar .voice-settings {
   justify-content: flex-end;
 }
