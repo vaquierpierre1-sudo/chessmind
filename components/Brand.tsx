@@ -1,0 +1,11 @@
+export function BrandMark() {
+  return (
+    <svg className="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+      <rect width="64" height="64" rx="15" fill="currentColor" />
+      <path
+        d="M21 48h24v-7H21v7Zm3.2-10h17.6l-1.4-7.3-4.1-3.8 3.2-8.4-2.7-2.2-3.1 3.6-.2-10.4h-4.2l-.2 10.4-3.1-3.6-2.7 2.2 3.2 8.4-4.1 3.8L23 38h1.2Z"
+        fill="#f7f3e9"
+      />
+    </svg>
+  );
+}

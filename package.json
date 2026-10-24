@@ -1,0 +1,29 @@
+{
+  "name": "chessmind",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A voice-first, accessible chess coach for blind and visually impaired players.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx tests/speech.test.ts"
+  },
+  "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.74.0",
+    "chess.js": "1.4.0",
+    "next": "16.4.3",
+    "openai": "7.43.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "stockfish": "19.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0"
+  }
+}
