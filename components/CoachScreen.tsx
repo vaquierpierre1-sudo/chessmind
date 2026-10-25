@@ -4,41 +4,45 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChessBoard } from "./ChessBoard";
 import { moveLabel } from "@/lib/chess-utils";
 import { describePosition } from "@/lib/move-speech";
+import { buildCoachTimelineFacts, buildSelectedMoveSummary } from "@/lib/analysis-narration";
 import { useSpeech, useSpeechRecognition } from "@/lib/use-speech";
 import { VOICE_PREVIEW_TEXT, voiceLabel, type VoiceId } from "@/lib/voices";
 import { VoicePicker } from "./VoicePicker";
 import { usePersistentState } from "@/lib/use-persistent-state";
-import type { CoachMessage, CoachStatus, GameAnalysis, Mistake } from "@/lib/types";
+import type { AnalysisMode, AnalysisMove, CoachMessage, CoachStatus, GameAnalysis } from "@/lib/types";
 
 type CoachScreenProps = {
   analysis: GameAnalysis;
-  mistake: Mistake;
+  analysisMode: AnalysisMode;
+  move: AnalysisMove;
   coachStatus: CoachStatus | null;
   speechRate: number;
   onSpeechRateChange: (rate: number) => void;
   voiceId: VoiceId;
   onVoiceChange: (voice: VoiceId) => void;
   ttsConfigured: boolean | null;
-  onBack: () => void;
-  onSelectMistake: (id: string) => void;
+  onBack?: () => void;
+  onSelectMove: (id: string) => void;
+  embedded?: boolean;
 };
 
 const SUGGESTED_QUESTIONS = [
-  "Why was my move bad?",
+  "Explain this move.",
   "What was the better plan?",
   "Describe the position.",
   "What rule should I remember?",
 ];
 
-const OPENING_USER_MESSAGE = "Please explain this mistake to me.";
+const OPENING_USER_MESSAGE = "Please explain this move to me.";
 
-function classificationLabel(kind: Mistake["kind"]) {
-  return kind.charAt(0).toUpperCase() + kind.slice(1);
+function classificationLabel(kind: AnalysisMove["kind"]) {
+  return kind ? kind.charAt(0).toUpperCase() + kind.slice(1) : "Quiet move";
 }
 
 export function CoachScreen({
   analysis,
-  mistake,
+  analysisMode,
+  move,
   coachStatus,
   speechRate,
   onSpeechRateChange,
@@ -46,7 +50,8 @@ export function CoachScreen({
   onVoiceChange,
   ttsConfigured,
   onBack,
-  onSelectMistake,
+  onSelectMove,
+  embedded = false,
 }: CoachScreenProps) {
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [streaming, setStreaming] = useState("");
@@ -67,10 +72,11 @@ export function CoachScreen({
   autoSpeakRef.current = autoSpeak;
   speechRef.current = speech;
 
-  const mistakeIndex = analysis.mistakes.findIndex((candidate) => candidate.id === mistake.id);
-  const previousMistake = mistakeIndex > 0 ? analysis.mistakes[mistakeIndex - 1] : null;
-  const nextMistake = mistakeIndex >= 0 ? analysis.mistakes[mistakeIndex + 1] : null;
-  const positionDescription = describePosition(mistake.fenAfter);
+  const timeline = analysis.timeline;
+  const moveIndex = timeline.findIndex((candidate) => candidate.id === move.id);
+  const previousMove = moveIndex > 0 ? timeline[moveIndex - 1] : null;
+  const nextMove = moveIndex >= 0 ? timeline[moveIndex + 1] : null;
+  const positionDescription = describePosition(move.fenAfter);
 
   const runRequest = useCallback(
     async (history: CoachMessage[], opening: boolean) => {
@@ -91,11 +97,14 @@ export function CoachScreen({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            mistake,
+            move,
             game: analysis.game,
             side: analysis.side,
             messages: history,
             depth: analysis.depth,
+            mode: analysisMode,
+            timelineFacts: buildCoachTimelineFacts(analysis.timeline),
+            selectedMoveSummary: buildSelectedMoveSummary(move),
           }),
           signal: controller.signal,
         });
@@ -157,7 +166,7 @@ export function CoachScreen({
         if (sequence === sequenceRef.current) setBusy(false);
       }
     },
-    [analysis, mistake, coachStatus],
+    [analysis, analysisMode, move, coachStatus],
   );
 
   useEffect(() => {
@@ -180,7 +189,7 @@ export function CoachScreen({
     }
     void runRequest([], true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mistake.id, coachStatus]);
+  }, [move.id, coachStatus]);
 
   useEffect(() => {
     return () => {
@@ -286,60 +295,63 @@ export function CoachScreen({
   };
 
   const visibleMessages = messages.filter((message) => !message.hidden);
-  const displayKind = classificationLabel(mistake.kind);
+  const displayKind = classificationLabel(move.kind);
+  const HeadingTag = embedded ? "h2" : "h1";
 
   return (
-    <div className="screen coach-screen">
-      <header className="screen-heading-row coach-page-heading">
+    <div className={embedded ? "coach-embedded" : "screen coach-screen"}>
+      <header className={embedded ? "coach-page-heading coach-page-heading-embedded" : "screen-heading-row coach-page-heading"}>
         <div>
-          <p className="eyebrow">AI coach</p>
-          <h1 id="coach-heading" tabIndex={-1}>
+          <p className="eyebrow">{embedded ? "Ask about this move" : "AI coach"}</p>
+          <HeadingTag id="coach-heading" tabIndex={-1}>
             Talk it <em>through.</em>
-          </h1>
+          </HeadingTag>
           <p className="lede">
-            Grounded in the engine&apos;s findings. Ask by voice or text, and hear every answer.
+            Ask about any move by voice or text, and hear every answer. Built for blind and visually impaired players.
           </p>
         </div>
-        <button type="button" className="secondary-button" onClick={onBack}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M19 12H5m5 5-5-5 5-5" />
-          </svg>
-          Back to review
-        </button>
+        {!embedded && onBack && (
+          <button type="button" className="secondary-button" onClick={onBack}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M19 12H5m5 5-5-5 5-5" />
+            </svg>
+            Back to review
+          </button>
+        )}
       </header>
 
       <div className="coach-layout">
         <aside className="mistake-context" aria-labelledby="mistake-context-heading">
           <div className="context-topline">
             <span className="context-index">
-              Turning point {mistakeIndex + 1} of {analysis.mistakes.length}
+              Move {moveIndex + 1} of {timeline.length}
             </span>
-            <span className={`kind-badge kind-badge-${mistake.kind}`}>{displayKind}</span>
+            <span className={move.kind ? `kind-badge kind-badge-${move.kind}` : "kind-badge kind-badge-quiet"}>{displayKind}</span>
           </div>
           <h2 id="mistake-context-heading">
-            Your move {moveLabel(mistake.moveNumber, mistake.color, "")}
+            Your move {moveLabel(move.moveNumber, move.color, "")}
           </h2>
-          <p className="context-move">{mistake.san}</p>
+          <p className="context-move">{move.san}</p>
 
           <dl className="context-facts">
             <div>
               <dt>You played</dt>
-              <dd>{mistake.san}</dd>
+              <dd>{move.san}</dd>
             </div>
             <div>
               <dt>Stockfish preferred</dt>
-              <dd>{mistake.bestSan}</dd>
+              <dd>{move.bestSan}</dd>
             </div>
             <div>
               <dt>Evaluation for you</dt>
               <dd>
-                {mistake.evalBeforePlayer} <span aria-hidden="true">→</span>
-                <span className="sr-only"> changed to </span> {mistake.evalAfterPlayer}
+                {move.evalBeforePlayer} <span aria-hidden="true">→</span>
+                <span className="sr-only"> changed to </span> {move.evalAfterPlayer}
               </dd>
             </div>
             <div>
               <dt>Engine line</dt>
-              <dd>{mistake.bestLineSan.slice(0, 5).join(" ")}</dd>
+              <dd>{move.bestLineSan.slice(0, 5).join(" ")}</dd>
             </div>
           </dl>
 
@@ -369,9 +381,9 @@ export function CoachScreen({
           <div id="coach-board" hidden={!boardOpen}>
             {boardOpen && (
               <ChessBoard
-                fen={mistake.fenAfter}
+                fen={move.fenAfter}
                 orientation={analysis.side}
-                lastMove={{ from: mistake.from, to: mistake.to }}
+                lastMove={{ from: move.from, to: move.to }}
                 caption="Position after your move"
               />
             )}
@@ -386,9 +398,9 @@ export function CoachScreen({
             <button
               type="button"
               className="link-button"
-              disabled={!previousMistake}
-              onClick={() => previousMistake && onSelectMistake(previousMistake.id)}
-              aria-label="Previous turning point"
+              disabled={!previousMove}
+              onClick={() => previousMove && onSelectMove(previousMove.id)}
+              aria-label="Previous move"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M19 12H5m5 5-5-5 5-5" />
@@ -398,9 +410,9 @@ export function CoachScreen({
             <button
               type="button"
               className="link-button"
-              disabled={!nextMistake}
-              onClick={() => nextMistake && onSelectMistake(nextMistake.id)}
-              aria-label="Next turning point"
+              disabled={!nextMove}
+              onClick={() => nextMove && onSelectMove(nextMove.id)}
+              aria-label="Next move"
             >
               Next
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -414,7 +426,7 @@ export function CoachScreen({
           <div className="chat-toolbar">
             <div>
               <h2 id="conversation-heading">Coach conversation</h2>
-              <p>Grounded in Stockfish · natural voice</p>
+              <p>Grounded in Stockfish · spoken first</p>
             </div>
             <div className="voice-settings">
               {speech.supported && (
@@ -469,13 +481,13 @@ export function CoachScreen({
               </span>
               <h3>The AI coach needs a key</h3>
               <p>
-                The Stockfish review above is complete and real. To open the conversation, add an OpenAI API
-                key to the server environment and restart the app.
+                The Stockfish analysis is complete and real. To open the conversation, add an OpenAI API key to
+                the server environment and restart the app.
               </p>
               <code>OPENAI_API_KEY=sk-...</code>
               <p className="small-note">
-                The key never reaches the browser. Until then, use the engine facts and spoken position
-                description on this page.
+                The key never reaches the browser. Until then, the engine facts and spoken position description
+                on this page still work.
               </p>
             </div>
           ) : (

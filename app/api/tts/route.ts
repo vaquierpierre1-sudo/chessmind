@@ -97,7 +97,7 @@ export async function POST(request: Request) {
         "Content-Type": "audio/mpeg",
         "Content-Length": String(audio.length),
         "Cache-Control": "private, no-store",
-        "X-ChessMind-Voice": requestedVoice,
+        "X-Blindchess-Voice": requestedVoice,
       },
     });
   } catch (error) {

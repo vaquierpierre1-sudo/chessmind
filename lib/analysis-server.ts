@@ -1,7 +1,7 @@
 import { Chess } from "chess.js";
-import { parsePgn, sideToColor, materialBalance } from "./chess-utils";
+import { parsePgn, sideToColor, materialBalance, pieceName } from "./chess-utils";
 import { StockfishEngine } from "./stockfish-server";
-import type { GameAnalysis, Mistake, MistakeKind, PlayerSide } from "./types";
+import type { AnalysisMove, GameAnalysis, Mistake, MistakeKind, PlayerSide } from "./types";
 import { MATE_SCORE } from "./types";
 
 export type AnalysisProgress = {
@@ -111,6 +111,79 @@ function kindForLoss(cpLoss: number): MistakeKind | null {
   return null;
 }
 
+function moveSpeech(move: { piece: string; from: string; to: string; captured?: string; promotion?: string }) {
+  const subject = `${pieceName(move.piece).charAt(0).toUpperCase()}${pieceName(move.piece).slice(1)}`;
+  const capture = move.captured ? ` captures on ${move.to}` : ` to ${move.to}`;
+  const promotion = move.promotion ? `, promoting to ${pieceName(move.promotion)}` : "";
+  return `${subject} from ${move.from}${capture}${promotion}.`;
+}
+
+function bestSpeech(fen: string, bestMove?: string, fallback = "not recorded.") {
+  if (!bestMove) return fallback;
+  try {
+    const before = new Chess(fen);
+    const move = before.move({
+      from: bestMove.slice(0, 2),
+      to: bestMove.slice(2, 4),
+      promotion: bestMove.length > 4 ? bestMove.slice(4, 5) : undefined,
+    });
+    return `${move.san}.`;
+  } catch {
+    return `${bestMove.slice(0, 2)} to ${bestMove.slice(2, 4)}.`;
+  }
+}
+
+type ParsedMove = ReturnType<typeof parsePgn>["game"]["moves"][number];
+
+function buildMoveAnalysis(
+  move: ParsedMove,
+  before: PositionEvaluation,
+  after: PositionEvaluation,
+  side: PlayerSide,
+  beforeFen: string,
+  afterFen: string,
+) {
+  const playedUci = `${move.from}${move.to}${move.promotion ?? ""}`;
+  const bestSan = before.bestMove ? uciToSan(beforeFen, before.bestMove) : null;
+  const playedBestMove = Boolean(before.bestMove && (before.bestMove === playedUci || bestSan === move.san));
+  const sign = sideToColor(side) === "w" ? 1 : -1;
+  const playerBefore = before.effectiveWhite * sign;
+  const playerAfter = after.effectiveWhite * sign;
+  const rawLoss = playedBestMove ? 0 : Math.max(0, playerBefore - playerAfter);
+  const kind = kindForLoss(rawLoss);
+  const bestLine = before.bestMove ? pvToSan(beforeFen, before.pv) : [];
+  const analysisMove: AnalysisMove = {
+    id: `${move.ply}-${move.from}${move.to}`,
+    ply: move.ply,
+    moveNumber: move.moveNumber,
+    color: move.color,
+    san: move.san,
+    speech: moveSpeech(move),
+    uci: playedUci,
+    from: move.from,
+    to: move.to,
+    piece: move.piece,
+    captured: move.captured,
+    bestSan: bestSan ?? "Unknown",
+    bestSpeech: bestSpeech(beforeFen, before.bestMove, bestSan ? `${bestSan}.` : "not recorded."),
+    bestUci: before.bestMove ?? "",
+    bestLineSan: bestLine.length > 0 ? bestLine : bestSan ? [bestSan] : [],
+    cpLoss: Math.min(100_000, Math.round(rawLoss)),
+    kind,
+    isTurningPoint: Boolean(kind),
+    evalBeforeCp: Math.round(before.effectiveWhite),
+    evalAfterCp: Math.round(after.effectiveWhite),
+    evalBeforeWhite: before.labelWhite,
+    evalAfterWhite: after.labelWhite,
+    evalBeforePlayer: playerLabel(before.labelWhite, side),
+    evalAfterPlayer: playerLabel(after.labelWhite, side),
+    fenBefore: beforeFen,
+    fenAfter: afterFen,
+    materialAfter: materialBalance(afterFen),
+  };
+  return { analysisMove, rawLoss, kind, bestSan, playedBestMove, bestLine, playerBefore, playerAfter };
+}
+
 export async function analyzePgn(pgn: string, side: PlayerSide, options: AnalyzeOptions = {}): Promise<GameAnalysis> {
   const parsed = parsePgn(pgn);
   const { game, positions } = parsed;
@@ -183,64 +256,39 @@ export async function analyzePgn(pgn: string, side: PlayerSide, options: Analyze
 
     let totalAccuracy = 0;
     let totalLoss = 0;
+    const timeline: AnalysisMove[] = [];
     const candidates: Mistake[] = [];
 
     for (const { move, index } of playerMoves) {
       const before = evaluations[index];
       const after = evaluations[index + 1];
       if (!before || !after) continue;
-      const sign = playerColor === "w" ? 1 : -1;
-      const playerBefore = before.effectiveWhite * sign;
-      const playerAfter = after.effectiveWhite * sign;
       const beforeFen = positions[index];
       const afterFen = positions[index + 1];
       if (!beforeFen || !afterFen) continue;
-      const playedUci = `${move.from}${move.to}${move.promotion ?? ""}`;
-      const bestSan = before.bestMove ? uciToSan(beforeFen, before.bestMove) : null;
-      const playedBestMove = Boolean(
-        before.bestMove && (before.bestMove === playedUci || bestSan === move.san),
-      );
-      const rawLoss = playedBestMove ? 0 : Math.max(0, playerBefore - playerAfter);
-      totalLoss += Math.min(rawLoss, 1000);
-      totalAccuracy += accuracyFromWinChange(winPercent(playerBefore), winPercent(playerAfter));
 
-      const kind = kindForLoss(rawLoss);
-      if (!kind || !before.bestMove || !bestSan || playedBestMove) continue;
-      const bestLine = pvToSan(beforeFen, before.pv);
-      if (bestLine.length === 0) bestLine.push(bestSan);
+      const result = buildMoveAnalysis(move, before, after, side, beforeFen, afterFen);
+      timeline.push(result.analysisMove);
+
+      totalLoss += Math.min(result.rawLoss, 1000);
+      totalAccuracy += accuracyFromWinChange(winPercent(result.playerBefore), winPercent(result.playerAfter));
+
+      if (!result.kind || !before.bestMove || !result.bestSan || result.playedBestMove) continue;
       candidates.push({
-        id: `${move.ply}-${move.from}${move.to}`,
-        ply: move.ply,
-        moveNumber: move.moveNumber,
-        color: move.color,
-        san: move.san,
-        uci: playedUci,
-        from: move.from,
-        to: move.to,
-        piece: move.piece,
-        captured: move.captured,
-        bestSan,
+        ...result.analysisMove,
+        bestSan: result.bestSan,
+        bestSpeech: bestSpeech(beforeFen, before.bestMove, `${result.bestSan}.`),
         bestUci: before.bestMove,
-        bestLineSan: bestLine,
-        cpLoss: Math.min(100_000, Math.round(rawLoss)),
-        kind,
-        evalBeforeCp: Math.round(before.effectiveWhite),
-        evalAfterCp: Math.round(after.effectiveWhite),
-        evalBeforeWhite: before.labelWhite,
-        evalAfterWhite: after.labelWhite,
-        evalBeforePlayer: playerLabel(before.labelWhite, side),
-        evalAfterPlayer: playerLabel(after.labelWhite, side),
-        fenBefore: beforeFen,
-        fenAfter: afterFen,
-        materialAfter: materialBalance(afterFen),
+        bestLineSan: result.bestLine.length > 0 ? result.bestLine : [result.bestSan],
+        kind: result.kind,
+        isTurningPoint: true,
       });
     }
 
     candidates.sort((a, b) => b.cpLoss - a.cpLoss || b.ply - a.ply);
-    const mistakes = candidates.slice(0, 3);
+    const mistakes = candidates;
     const playerMoveCount = playerMoves.length;
-    const accuracy =
-      playerMoveCount > 0 ? Math.round((totalAccuracy / playerMoveCount) * 10) / 10 : 0;
+    const accuracy = playerMoveCount > 0 ? Math.round((totalAccuracy / playerMoveCount) * 10) / 10 : 0;
     const acpl = playerMoveCount > 0 ? Math.round(totalLoss / playerMoveCount) : 0;
 
     return {
@@ -252,6 +300,7 @@ export async function analyzePgn(pgn: string, side: PlayerSide, options: Analyze
       engine: `${engineName} · depth ${depth}`,
       analyzedPositions: evaluations.length,
       playerMoveCount,
+      timeline,
       mistakes,
       generatedAt: new Date().toISOString(),
     };

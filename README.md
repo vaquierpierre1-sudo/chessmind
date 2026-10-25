@@ -1,15 +1,15 @@
-# ChessMind
+# Blindchess
 
-A voice-first chess coach for blind and visually impaired players. Import a finished game, let Stockfish find the turning points, then talk through the position with an AI coach that is grounded in the engine's actual analysis.
+A talk-first chess coach for blind and visually impaired players. Import a finished game, hear Stockfish review every move, and ask the coach about any position without leaving the analysis page.
 
-ChessMind is designed to be fully usable without looking at the screen: every control is keyboard accessible, every position has a text and spoken description, and every answer can be read aloud.
+Blindchess is designed to be fully usable without looking at the screen: every control is keyboard accessible, every position has a text and spoken description, and every answer can be read aloud.
 
 ## What it does
 
 - **Import a game** — paste PGN text or choose a `.pgn` file exported from Lichess or Chess.com.
 - **Review with Stockfish** — a real Stockfish 19 Lite engine evaluates every position and identifies the player's largest evaluation losses.
-- **Hear the turning points** — the three biggest mistakes are shown with the played move, Stockfish's preferred move, the evaluation swing, and the beginning of the engine's line.
-- **Talk to the coach** — ask by voice or text. The OpenAI-backed coach receives the exact Stockfish facts for the selected mistake, keeps a conversation history, and streams replies.
+- **Hear every move** — the full move-by-move timeline shows the played move, Stockfish's preferred move, the evaluation swing, and the engine line. Each entry can be heard on its own or as one continuous review.
+- **Talk to the coach on the same page** — review and coaching are fused. Select any move from the timeline, then ask by voice or text. The OpenAI-backed coach receives the selected move plus the grounded game timeline and streams replies aloud.
 - **Play blindfolded** — a real Stockfish opponent replies to moves spoken or typed in natural language, with hints, legal-move lists, full spoken board descriptions, undo, and audio controls.
 - **Choose a natural coach voice** — the ElevenLabs **Ramesh** and **Sid** voices, six OpenAI voices, live previews, persisted selection, and automatic fallback to the device voice if cloud speech is unavailable.
 - **Use an optional board** — a visual board is available everywhere it matters, but it is never required.
@@ -46,7 +46,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-The Stockfish review, blindfold play mode, and all accessibility features work without an OpenAI key. Without a key, the coach screen explains what is missing instead of inventing a conversation.
+The Stockfish analysis, blindfold play mode, and all accessibility features work without an OpenAI key. Without a key, the embedded coach panel explains what is missing instead of inventing a conversation.
 
 ### Environment variables
 
@@ -67,14 +67,14 @@ The Stockfish review, blindfold play mode, and all accessibility features work w
 2. A server-side Stockfish process evaluates every position in the game with UCI at the configured depth.
 3. For each move made by the selected side, the app compares the player's position evaluation before and after the move, then selects the largest centipawn losses.
 4. A move Stockfish itself would have chosen is never counted as a mistake, even if a shallow search produces an inconsistent horizon score.
-5. Mistakes are classified as `inaccuracy` (≥50 centipawns), `mistake` (≥150), or `blunder` (≥300). Up to three are shown.
+5. The full timeline is kept for every reviewed move. Key moments are labelled `inaccuracy` (≥50 centipawns), `mistake` (≥150), or `blunder` (≥300).
 6. Accuracy is an estimate from win-probability changes and is not an official rating. Average loss is also shown. Positions already decided or moves with a forced mate swing are labelled as such rather than presented as precise pawn counts.
 
-The review deliberately errs on the side of showing fewer, evidence-backed mistakes. If the game has no move that loses at least half a pawn from the selected side, the review says so.
+The review is full-game first: every reviewed move remains available by text, touch, keyboard, or speech. If there is no move that loses at least half a pawn from the selected side, the review says so while still keeping the complete timeline.
 
 ## AI grounding
 
-`POST /api/coach` builds a system prompt from the selected mistake and game facts, including:
+`POST /api/coach` builds a system prompt from the selected move, the reviewed timeline, and game facts, including:
 
 - the played move and Stockfish's preferred move;
 - evaluations before and after, from the player's point of view;
@@ -128,7 +128,7 @@ Ambiguous moves are rejected with the legal alternatives, never guessed. Typed i
 
 ```
 app/
-  page.tsx                single-page app shell
+  page.tsx                Blindchess single-page app shell
   api/analyze/route.ts    streaming NDJSON game analysis
   api/bestmove/route.ts   Stockfish opponent and hint
   api/coach/route.ts      secured OpenAI streaming chat
@@ -136,12 +136,12 @@ app/
   api/tts/route.ts        secured ElevenLabs and OpenAI text-to-speech
 components/
   ImportScreen.tsx        PGN upload, parsing, analysis progress
-  ReviewScreen.tsx        game summary and turning points
-  CoachScreen.tsx         voice/text conversation and optional board
+  ReviewScreen.tsx        full move timeline and embedded coach
+  CoachScreen.tsx         grounded voice/text conversation and optional board
   PlayScreen.tsx          blindfold practice room
   ChessBoard.tsx          accessible optional visual board
 lib/
-  analysis-server.ts      evaluation, accuracy, mistake selection
+  analysis-server.ts      evaluation, accuracy, full move timeline
   stockfish-server.ts     UCI engine process bridge
   chess-utils.ts          PGN parsing and chess helpers
   move-speech.ts          spoken move parser and position descriptions
@@ -156,7 +156,7 @@ Stack: Next.js 16, React 19, TypeScript, `chess.js`, `stockfish` (WASM), OpenAI 
 
 - `POST /api/analyze` — `{ pgn, side }`, streams newline-delimited JSON events: `meta`, `progress`, `result`, `error`.
 - `POST /api/bestmove` — `{ fen, depth?, skill? }`, returns a legal Stockfish move.
-- `POST /api/coach` — grounded streaming text. Requires `OPENAI_API_KEY`.
+- `POST /api/coach` — grounded streaming text for any selected move, with the reviewed timeline as context. Requires `OPENAI_API_KEY`.
 - `POST /api/tts` — `{ text, voice, speed }`, returns MP3 audio. Uses `ELEVENLABS_API_KEY` for Ramesh and `OPENAI_API_KEY` for OpenAI voices.
 - `GET /api/status` — whether the coach is configured, the model name, and the engine label.
 
@@ -179,5 +179,5 @@ The test suite covers coordinate moves, SAN, castling, captures, promotion, ambi
 - The coach requires an OpenAI key. No fake coaching or analysis is provided without one.
 - Natural voices are billed per character by their providers. Every automatic blindfold announcement can trigger a TTS request, so choose **Device voice** if you want instant, zero-cost move announcements.
 - The ElevenLabs voice uses the server-only `ELEVENLABS_API_KEY` created by the official onboarding CLI. Do not commit `.env.local`.
-- Ramesh and Sid are ElevenLabs **library voices**. ElevenLabs free accounts cannot synthesize library voices through the API; Creator access or API credits are required. ChessMind shows the reason and automatically uses the device voice when this happens.
+- Ramesh and Sid are ElevenLabs **library voices**. ElevenLabs free accounts cannot synthesize library voices through the API; Creator access or API credits are required. Blindchess shows the reason and automatically uses the device voice when this happens.
 - Stockfish is licensed under GPL-3.0. The `stockfish` npm package includes the engine and its license. Review that license before redistributing the app.

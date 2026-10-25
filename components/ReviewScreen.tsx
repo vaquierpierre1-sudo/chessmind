@@ -6,12 +6,25 @@ import {
   mistakeSummary,
   moveLabel,
 } from "@/lib/chess-utils";
-import type { GameAnalysis, Mistake } from "@/lib/types";
+import { analysisModeDescription, analysisModeLabel, buildAnalysisNarration, buildAnalysisSpeech } from "@/lib/analysis-narration";
+import { useSpeech } from "@/lib/use-speech";
+import { CoachScreen } from "./CoachScreen";
+import type { AnalysisMode, CoachStatus, GameAnalysis, Mistake } from "@/lib/types";
+import type { VoiceId } from "@/lib/voices";
 
 type ReviewScreenProps = {
   analysis: GameAnalysis;
+  analysisMode: AnalysisMode;
+  onAnalysisModeChange: (mode: AnalysisMode) => void;
+  speechRate: number;
+  onSpeechRateChange: (rate: number) => void;
+  voiceId: VoiceId;
+  onVoiceChange: (voice: VoiceId) => void;
+  coachStatus: CoachStatus | null;
+  ttsConfigured: boolean | null;
+  selectedMoveId: string | null;
+  onSelectMove: (id: string) => void;
   onBack: () => void;
-  onOpenCoach: (mistakeId: string) => void;
 };
 
 function lossLabel(mistake: Mistake) {
@@ -47,7 +60,20 @@ function PlayerLine({
   );
 }
 
-export function ReviewScreen({ analysis, onBack, onOpenCoach }: ReviewScreenProps) {
+export function ReviewScreen({
+  analysis,
+  analysisMode,
+  onAnalysisModeChange,
+  speechRate,
+  onSpeechRateChange,
+  voiceId,
+  onVoiceChange,
+  coachStatus,
+  ttsConfigured,
+  selectedMoveId,
+  onSelectMove,
+  onBack,
+}: ReviewScreenProps) {
   const { game } = analysis;
   const movePairs: Array<{ number: number; white?: string; black?: string }> = [];
   for (let index = 0; index < game.moves.length; index += 2) {
@@ -58,28 +84,75 @@ export function ReviewScreen({ analysis, onBack, onOpenCoach }: ReviewScreenProp
     });
   }
   const displayResult = game.result === "*" ? "Unfinished" : game.result;
+  const narration = buildAnalysisNarration(analysis.timeline, analysisMode);
+  const speech = useSpeech(speechRate, voiceId, ttsConfigured !== false);
+  const selectedMove =
+    analysis.timeline.find((move) => move.id === selectedMoveId) ??
+    analysis.timeline.find((move) => move.isTurningPoint) ??
+    analysis.timeline[0] ??
+    null;
+
+  const hearMove = (text: string) => {
+    speech.speak(text);
+  };
+
+  const hearSummary = () => {
+    speech.speak(
+      `Game summary. ${game.white} played White against ${game.black}. ${describePgnResult(
+        game.result,
+        game.white,
+        game.black,
+      )}. You played ${analysis.side}. Your estimated accuracy is ${analysis.accuracy.toFixed(
+        1,
+      )} percent, with an average loss of ${analysis.acpl} centipawns per move, across ${
+        analysis.playerMoveCount
+      } reviewed moves. There are ${analysis.mistakes.length} key moments. The full analysis follows, move by move.`,
+    );
+  };
+
+  const openMove = (id: string) => {
+    speech.cancel();
+    onSelectMove(id);
+    window.setTimeout(() => document.getElementById("coach-heading")?.focus(), 80);
+  };
 
   return (
     <div className="screen review-screen">
-      <header className="screen-heading-row">
+      <header className="screen-heading-row review-header">
         <div>
-          <p className="eyebrow">Game review</p>
+          <p className="eyebrow">Blindchess analysis</p>
           <h1 id="review-heading" tabIndex={-1}>
-            Your game,{" "}
+            Hear your{" "}
             <br />
-            <em>replayed.</em>
+            <em>whole game.</em>
           </h1>
           <p className="lede">
-            {describePgnResult(game.result, game.white, game.black)}. Stockfish ranked the moments where the
-            evaluation turned against you.
+            {describePgnResult(game.result, game.white, game.black)}. Every move is scored and described
+            for the ear, and the coach is right here on this page.
           </p>
         </div>
-        <button type="button" className="secondary-button" onClick={onBack}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M19 12H5m5 5-5-5 5-5" />
-          </svg>
-          Import another game
-        </button>
+        <div className="review-header-actions">
+          <label className="rate-control review-mode-control">
+            <span>Analysis</span>
+            <select
+              value={analysisMode}
+              onChange={(event) => onAnalysisModeChange(event.target.value as AnalysisMode)}
+            >
+              <option value="standard">{analysisModeLabel("standard")}</option>
+              <option value="expert">{analysisModeLabel("expert")}</option>
+            </select>
+          </label>
+          <p className="review-mode-note">{analysisModeDescription(analysisMode)}</p>
+          <button type="button" className="secondary-button compact-button" onClick={hearSummary}>
+            Hear game summary
+          </button>
+          <button type="button" className="secondary-button" onClick={onBack}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M19 12H5m5 5-5-5 5-5" />
+            </svg>
+            Import another game
+          </button>
+        </div>
       </header>
 
       <section className="game-summary" aria-labelledby="game-summary-heading">
@@ -135,7 +208,7 @@ export function ReviewScreen({ analysis, onBack, onOpenCoach }: ReviewScreenProp
         </dl>
       </section>
 
-      <section className="stats-grid" aria-label="Review statistics">
+      <section className="stats-grid" aria-label="Analysis statistics">
         <article className="stat-card stat-primary">
           <p className="stat-label">Estimated accuracy</p>
           <p className="stat-value">
@@ -155,20 +228,92 @@ export function ReviewScreen({ analysis, onBack, onOpenCoach }: ReviewScreenProp
           <p className="stat-note">Centipawns lost per move, from your side.</p>
         </article>
         <article className="stat-card">
-          <p className="stat-label">Turning points</p>
+          <p className="stat-label">Key moments</p>
           <p className="stat-value">{analysis.mistakes.length}</p>
-          <p className="stat-note">The largest evaluation losses, listed below.</p>
+          <p className="stat-note">The clearest turning points in your game.</p>
         </article>
+      </section>
+
+      <section className="analysis-timeline" aria-labelledby="analysis-timeline-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Hear every move</p>
+            <h2 id="analysis-timeline-heading">Move-by-move analysis</h2>
+          </div>
+          <div className="timeline-actions">
+            <p>
+              {analysisMode === "expert"
+                ? "A fuller pass with engine ideas and evaluation swings, move by move."
+                : "A short, spoken-friendly replay of the game, move by move."}
+            </p>
+            <button
+              type="button"
+              className="secondary-button compact-button"
+              onClick={() => {
+                if (speech.speaking || speech.preparing) {
+                  speech.cancel();
+                  return;
+                }
+                speech.speak(buildAnalysisSpeech(analysis.timeline, analysisMode));
+              }}
+            >
+              {(speech.speaking || speech.preparing) ? "Stop audio" : "Hear full analysis"}
+            </button>
+          </div>
+        </div>
+        <div className="timeline-audio-status" role="status" aria-live="polite">
+          {speech.preparing
+            ? "Preparing the selected voice."
+            : speech.speaking
+              ? "Reading the analysis aloud. Press Stop audio to pause."
+              : ""}
+        </div>
+        {speech.notice && (
+          <p className="voice-warning" role="status">
+            {speech.notice}
+          </p>
+        )}
+        {speech.error && (
+          <p className="voice-warning" role="status">
+            {speech.error}
+          </p>
+        )}
+        <div className="analysis-transcript">
+          {narration.map((entry) => (
+            <article className={`analysis-entry${entry.move.isTurningPoint ? " is-turning-point" : ""}`} key={entry.id}>
+              <p className="analysis-entry-head">{entry.headline}</p>
+              <p className="analysis-entry-text">{entry.summary}</p>
+              <div className="analysis-entry-actions">
+                <button
+                  type="button"
+                  className="link-button analysis-entry-link"
+                  aria-label={`Hear move ${entry.headline}`}
+                  onClick={() => hearMove(entry.summary)}
+                >
+                  Hear this move
+                </button>
+                <button
+                  type="button"
+                  className="link-button analysis-entry-link"
+                  aria-label={`Ask the coach about move ${entry.headline}`}
+                  onClick={() => openMove(entry.id)}
+                >
+                  Ask the coach
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="turning-points" aria-labelledby="turning-points-heading">
         <div className="section-heading">
           <div>
             <p className="eyebrow">What changed the game</p>
-            <h2 id="turning-points-heading">Biggest turning points</h2>
+            <h2 id="turning-points-heading">Key moments</h2>
           </div>
           <p>
-            Ranked by evaluation lost. Choose one to hear what happened and what the engine wanted instead.
+            The full analysis is above, move by move. These are the sharpest moments; ask the coach about any of them.
           </p>
         </div>
 
@@ -177,11 +322,11 @@ export function ReviewScreen({ analysis, onBack, onOpenCoach }: ReviewScreenProp
             <span className="empty-mark" aria-hidden="true">
               ✓
             </span>
-            <h3>{analysis.playerMoveCount === 0 ? "No moves to review" : "No clear mistakes found"}</h3>
+            <h3>{analysis.playerMoveCount === 0 ? "No moves to review" : "No clear turning points found"}</h3>
             <p>
               {analysis.playerMoveCount === 0
                 ? `The game record contains no moves by ${analysis.side === "white" ? "White" : "Black"}.`
-                : "Stockfish did not find a move from your side that lost half a pawn or more. Try another game to keep exploring."}
+                : "Stockfish did not find a move from your side that lost half a pawn or more. The full move-by-move analysis is still above."}
             </p>
             <button type="button" className="primary-button" onClick={onBack}>
               Import another game
@@ -238,7 +383,7 @@ export function ReviewScreen({ analysis, onBack, onOpenCoach }: ReviewScreenProp
                   <button
                     type="button"
                     className="coach-button"
-                    onClick={() => onOpenCoach(mistake.id)}
+                    onClick={() => openMove(mistake.id)}
                   >
                     Talk this through
                     <span className="sr-only"> about move {mistake.moveNumber}, {mistake.san}</span>
@@ -249,6 +394,38 @@ export function ReviewScreen({ analysis, onBack, onOpenCoach }: ReviewScreenProp
                 </div>
               </article>
             ))}
+          </div>
+        )}
+      </section>
+
+      <section className="embedded-coach" aria-labelledby="embedded-coach-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Talk it through</p>
+            <h2 id="embedded-coach-heading">Blindchess coach</h2>
+          </div>
+          <p>
+            For blind players, every move is available by touch, keyboard, or voice. Pick a move, then hear the explanation out loud.
+          </p>
+        </div>
+        {selectedMove ? (
+          <CoachScreen
+            analysis={analysis}
+            analysisMode={analysisMode}
+            move={selectedMove}
+            coachStatus={coachStatus}
+            speechRate={speechRate}
+            onSpeechRateChange={onSpeechRateChange}
+            voiceId={voiceId}
+            onVoiceChange={onVoiceChange}
+            ttsConfigured={ttsConfigured}
+            onSelectMove={onSelectMove}
+            embedded
+          />
+        ) : (
+          <div className="empty-card">
+            <h3>Select a move to open the coach</h3>
+            <p>Choose any move in the analysis above to hear the coach explain it out loud.</p>
           </div>
         )}
       </section>
@@ -271,8 +448,8 @@ export function ReviewScreen({ analysis, onBack, onOpenCoach }: ReviewScreenProp
 
       <p className="analysis-footnote">
         <strong>How this was measured.</strong> {analysis.engine} evaluated {analysis.analyzedPositions}{" "}
-        positions. Mistakes are moves that lost at least 0.5 pawns of evaluation from your side. Accuracy is an
-        estimate from engine win probability, not an official chess rating.
+        positions. Key moments are moves that lost at least 0.5 pawns of evaluation from your side. Accuracy is
+        an estimate from engine win probability, not an official chess rating.
       </p>
     </div>
   );

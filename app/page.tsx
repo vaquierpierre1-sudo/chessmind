@@ -1,5 +1,5 @@
-import { ChessMindApp } from "@/components/ChessMindApp";
+import { BlindchessApp } from "@/components/BlindchessApp";
 
 export default function Home() {
-  return <ChessMindApp />;
+  return <BlindchessApp />;
 }

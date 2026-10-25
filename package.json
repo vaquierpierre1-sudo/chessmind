@@ -1,14 +1,14 @@
 {
-  "name": "chessmind",
+  "name": "blindchess",
   "version": "1.0.0",
   "private": true,
-  "description": "A voice-first, accessible chess coach for blind and visually impaired players.",
+  "description": "Blindchess, a talk-first chess coach for blind and visually impaired players.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "tsx tests/speech.test.ts"
+    "test": "tsx tests/speech.test.ts && tsx tests/analysis.test.ts"
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.74.0",

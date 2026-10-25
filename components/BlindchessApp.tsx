@@ -4,31 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import { BrandMark } from "./Brand";
 import { ImportScreen } from "./ImportScreen";
 import { ReviewScreen } from "./ReviewScreen";
-import { CoachScreen } from "./CoachScreen";
 import { PlayScreen } from "./PlayScreen";
 import { usePersistentState } from "@/lib/use-persistent-state";
-import type { CoachStatus, GameAnalysis } from "@/lib/types";
+import type { AnalysisMode, CoachStatus, GameAnalysis } from "@/lib/types";
 import { DEFAULT_VOICE_ID, normalizeVoiceId, type VoiceId } from "@/lib/voices";
 
-type Screen = "import" | "review" | "coach" | "play";
+type Screen = "import" | "review" | "play";
 
 const TITLES: Record<Screen, string> = {
-  import: "ChessMind — Hear what you missed",
-  review: "Game review — ChessMind",
-  coach: "AI coach — ChessMind",
-  play: "Blindfold play — ChessMind",
+  import: "Blindchess — Hear what you missed",
+  review: "Analysis — Blindchess",
+  play: "Blindfold play — Blindchess",
 };
 
-export function ChessMindApp() {
+export function BlindchessApp() {
   const [screen, setScreen] = useState<Screen>("import");
   const [pgnText, setPgnText] = useState("");
   const [side, setSide] = useState<"white" | "black">("white");
   const [analysis, setAnalysis] = useState<GameAnalysis | null>(null);
-  const [activeMistakeId, setActiveMistakeId] = useState<string | null>(null);
+  const [activeMoveId, setActiveMoveId] = useState<string | null>(null);
   const [status, setStatus] = useState<CoachStatus | null>(null);
   const [highContrast, setHighContrast] = usePersistentState("chessmind.highContrast", false);
   const [speechRate, setSpeechRate] = usePersistentState("chessmind.speechRate", 1);
   const [voiceId, setVoiceId] = usePersistentState<VoiceId>("chessmind.voice.v2", DEFAULT_VOICE_ID);
+  const [analysisMode, setAnalysisMode] = usePersistentState<AnalysisMode>("chessmind.analysisMode", "standard");
   const selectedVoice = normalizeVoiceId(voiceId);
   const firstScreen = useRef(true);
 
@@ -57,35 +56,25 @@ export function ChessMindApp() {
     setScreen(next);
   };
 
-  const openCoach = (mistakeId?: string) => {
-    if (!analysis?.mistakes.length) return;
-    setActiveMistakeId(mistakeId ?? analysis.mistakes[0].id);
-    goTo("coach");
-  };
-
   const completeAnalysis = (result: GameAnalysis) => {
     setAnalysis(result);
-    setActiveMistakeId(result.mistakes[0]?.id ?? null);
+    setActiveMoveId(result.mistakes[0]?.id ?? result.timeline[0]?.id ?? null);
     setSide(result.side);
     goTo("review");
   };
-
-  const hasMistakes = Boolean(analysis?.mistakes.length);
-  const activeMistake =
-    analysis?.mistakes.find((mistake) => mistake.id === activeMistakeId) ?? analysis?.mistakes[0] ?? null;
 
   return (
     <div className="site-shell">
       <header className="site-header">
         <div className="header-inner">
-          <button className="brand" type="button" onClick={() => goTo("import")} aria-label="ChessMind home">
+          <button className="brand" type="button" onClick={() => goTo("import")} aria-label="Blindchess home">
             <BrandMark />
             <span>
-              Chess<span>Mind</span>
+              Blind<span>chess</span>
             </span>
           </button>
 
-          <nav className="step-nav" aria-label="Game review steps">
+          <nav className="step-nav" aria-label="Blindchess sections">
             <ol>
               <li>
                 <button
@@ -108,27 +97,9 @@ export function ChessMindApp() {
                   aria-describedby={!analysis ? "review-step-hint" : undefined}
                 >
                   <span className="step-number" aria-hidden="true">2</span>
-                  <span>Review</span>
+                  <span>Analysis</span>
                 </button>
                 {!analysis && <span id="review-step-hint" className="sr-only">Import and analyze a game first.</span>}
-              </li>
-              <li>
-                <button
-                  type="button"
-                  className={screen === "coach" ? "step-link is-current" : "step-link"}
-                  aria-current={screen === "coach" ? "step" : undefined}
-                  onClick={() => openCoach()}
-                  disabled={!hasMistakes}
-                  aria-describedby={!hasMistakes ? "coach-step-hint" : undefined}
-                >
-                  <span className="step-number" aria-hidden="true">3</span>
-                  <span>Coach</span>
-                </button>
-                {!hasMistakes && (
-                  <span id="coach-step-hint" className="sr-only">
-                    Analyze a game with at least one clear turning point first.
-                  </span>
-                )}
               </li>
             </ol>
           </nav>
@@ -171,22 +142,17 @@ export function ChessMindApp() {
         {screen === "review" && analysis && (
           <ReviewScreen
             analysis={analysis}
-            onBack={() => goTo("import")}
-            onOpenCoach={openCoach}
-          />
-        )}
-        {screen === "coach" && analysis && activeMistake && (
-          <CoachScreen
-            analysis={analysis}
-            mistake={activeMistake}
-            coachStatus={status}
+            analysisMode={analysisMode}
+            onAnalysisModeChange={setAnalysisMode}
             speechRate={speechRate}
             onSpeechRateChange={setSpeechRate}
             voiceId={selectedVoice}
             onVoiceChange={setVoiceId}
+            coachStatus={status}
             ttsConfigured={status?.ttsConfigured ?? null}
-            onBack={() => goTo("review")}
-            onSelectMistake={(id) => setActiveMistakeId(id)}
+            selectedMoveId={activeMoveId}
+            onSelectMove={setActiveMoveId}
+            onBack={() => goTo("import")}
           />
         )}
         {screen === "play" && (
@@ -203,7 +169,7 @@ export function ChessMindApp() {
         {!analysis && screen !== "play" && (
           <div className="site-footnote">
             <p>
-              ChessMind reads finished games. Play on your usual platform, then bring the PGN here.
+              Blindchess is built for blind and visually impaired players. Play on your usual platform, then bring the PGN here.
             </p>
           </div>
         )}
@@ -211,8 +177,8 @@ export function ChessMindApp() {
 
       <footer className="site-footer">
         <p>
-          <span>ChessMind</span> · Voice-first chess coaching. Your PGN is analyzed on this server; only the
-          selected position facts are sent to OpenAI when you talk to the coach.
+          <span>Blindchess</span> · Talk-first chess coaching for blind and visually impaired players. Your PGN is
+          analyzed on this server; only the selected move facts are sent to OpenAI when you talk to the coach.
         </p>
         <p className="footer-note">Stockfish 19 Lite powers the review. No analysis is mocked.</p>
       </footer>

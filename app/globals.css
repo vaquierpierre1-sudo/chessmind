@@ -1191,6 +1191,137 @@ h2 em {
   margin-bottom: 34px;
 }
 
+.review-header {
+  align-items: flex-start;
+}
+
+.review-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.review-mode-control {
+  min-width: 220px;
+}
+
+.review-mode-control select {
+  min-width: 112px;
+}
+
+.review-mode-note {
+  max-width: 260px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.analysis-timeline {
+  margin-bottom: 36px;
+}
+
+.timeline-audio-status {
+  min-height: 18px;
+  margin: -8px 0 12px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.analysis-transcript {
+  display: grid;
+  gap: 10px;
+}
+
+.analysis-entry {
+  padding: 16px 18px 15px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.analysis-entry.is-turning-point {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  background: var(--accent-pale);
+}
+
+.analysis-entry-head {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.analysis-entry-text {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+
+.analysis-entry-link {
+  margin-top: 10px;
+  padding-left: 0;
+}
+
+.analysis-entry-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 10px;
+}
+
+.analysis-entry-actions .analysis-entry-link {
+  margin-top: 0;
+}
+
+.embedded-coach {
+  margin-top: 48px;
+  padding-top: 38px;
+  border-top: 1px solid var(--line);
+}
+
+.coach-embedded {
+  animation: none;
+}
+
+.coach-page-heading-embedded {
+  margin-bottom: 18px;
+}
+
+.coach-page-heading-embedded h2 {
+  margin: 0 0 8px;
+  font-size: clamp(32px, 4vw, 44px);
+  line-height: 1.02;
+}
+
+.coach-page-heading-embedded .lede {
+  margin: 0;
+  font-size: 14px;
+}
+
+.timeline-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  max-width: 430px;
+}
+
+.timeline-actions > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  text-align: right;
+}
+
 .game-summary {
   padding: 28px 30px 22px;
   border: 1px solid var(--line);
@@ -1504,6 +1635,12 @@ h2 em {
 .kind-badge-inaccuracy {
   background: #e3eadc;
   color: #36523c;
+}
+
+.kind-badge-quiet {
+  background: var(--surface-soft);
+  color: var(--muted);
+  border: 1px solid var(--line);
 }
 
 .mistake-loss {

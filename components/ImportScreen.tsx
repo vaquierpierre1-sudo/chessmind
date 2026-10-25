@@ -163,15 +163,15 @@ export function ImportScreen({ pgn, onPgnChange, side, onSideChange, onComplete 
   return (
     <div className="screen import-screen">
       <section className="import-intro" aria-labelledby="import-heading">
-        <p className="eyebrow">A voice-first chess coach</p>
+        <p className="eyebrow">A talk-first chess coach for blind players</p>
         <h1 id="import-heading" tabIndex={-1}>
           Hear what you{" "}
           <br />
           <em>missed.</em>
         </h1>
         <p className="lede">
-          Bring a finished game. Stockfish finds up to three turning points. Then talk them through
-          with a coach who explains everything out loud.
+          Bring a finished game. Stockfish reviews every move, then you can hear the whole game
+          and ask the coach anything, by voice or text.
         </p>
 
         <ol className="how-steps">
@@ -185,15 +185,15 @@ export function ImportScreen({ pgn, onPgnChange, side, onSideChange, onComplete 
           <li>
             <span className="how-number" aria-hidden="true">02</span>
             <div>
-              <h2>Find the turning points</h2>
-              <p>Real Stockfish analysis scores every one of your moves.</p>
+              <h2>Analyze every move</h2>
+              <p>Real Stockfish analysis scores every move you played.</p>
             </div>
           </li>
           <li>
             <span className="how-number" aria-hidden="true">03</span>
             <div>
-              <h2>Talk it through</h2>
-              <p>Ask by voice or text. The coach answers with clear square-by-square detail.</p>
+              <h2>Listen or talk it through</h2>
+              <p>Hear each move in plain language. Ask the coach by voice or text, without leaving the review.</p>
             </div>
           </li>
         </ol>
@@ -204,15 +204,15 @@ export function ImportScreen({ pgn, onPgnChange, side, onSideChange, onComplete 
               <path d="M4 10v4h3l5 4V6L7 10H4Zm12.5-2.5a6 6 0 0 1 0 9M19 5a10 10 0 0 1 0 14" />
             </svg>
           </span>
-          No board required. Every control is keyboard accessible, screen-reader friendly, and available as
-          text and speech.
+          Designed for blind and visually impaired players. No board required. Every control is keyboard
+          accessible, screen-reader friendly, and available as text and speech.
         </p>
       </section>
 
       <section className="import-panel" aria-labelledby="import-form-heading">
         <div className="panel-heading">
           <p className="panel-kicker">Start here</p>
-          <h2 id="import-form-heading">Review a game</h2>
+          <h2 id="import-form-heading">Analyze a game</h2>
           <p>One game at a time. Your PGN stays on this server for analysis.</p>
         </div>
 
@@ -303,7 +303,7 @@ export function ImportScreen({ pgn, onPgnChange, side, onSideChange, onComplete 
 
         {error && (
           <div className="alert alert-error" role="alert">
-            <strong>We couldn&apos;t start the review.</strong>
+            <strong>We couldn&apos;t start the analysis.</strong>
             <p>{error}</p>
           </div>
         )}
@@ -320,7 +320,7 @@ export function ImportScreen({ pgn, onPgnChange, side, onSideChange, onComplete 
             onClick={startAnalysis}
             disabled={!pgn.trim()}
           >
-            Review my mistakes
+            Analyze every move
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M5 12h14m-5-5 5 5-5 5" />
             </svg>
@@ -356,7 +356,7 @@ export function ImportScreen({ pgn, onPgnChange, side, onSideChange, onComplete 
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5V11Z" />
           </svg>
-          Your PGN is not stored. The AI coach only receives facts about the mistake you choose.
+          Your PGN is not stored. The coach receives the selected move and its engine facts.
         </p>
       </section>
     </div>

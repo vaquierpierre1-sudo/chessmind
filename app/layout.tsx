@@ -16,10 +16,10 @@ const serif = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "ChessMind — Hear what you missed",
+  title: "Blindchess — Hear what you missed",
   description:
-    "A voice-first chess coach for blind and visually impaired players. Import a game, let Stockfish find the turning points, and talk through them out loud.",
-  applicationName: "ChessMind",
+    "Blindchess is a talk-first chess coach for blind and visually impaired players. Import a finished game, hear every move reviewed by Stockfish, and ask the coach anything out loud.",
+  applicationName: "Blindchess",
 };
 
 export const viewport: Viewport = {

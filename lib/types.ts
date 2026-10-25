@@ -1,5 +1,6 @@
 export type PlayerSide = "white" | "black";
 export type PieceColor = "w" | "b";
+export type AnalysisMode = "standard" | "expert";
 
 export type MoveRecord = {
   ply: number;
@@ -37,22 +38,25 @@ export type ParsedGame = {
 
 export type MistakeKind = "inaccuracy" | "mistake" | "blunder";
 
-export type Mistake = {
+export type AnalysisMove = {
   id: string;
   ply: number;
   moveNumber: number;
   color: PieceColor;
   san: string;
+  speech: string;
   uci: string;
   from: string;
   to: string;
   piece: string;
   captured?: string;
   bestSan: string;
+  bestSpeech: string;
   bestUci: string;
   bestLineSan: string[];
   cpLoss: number;
-  kind: MistakeKind;
+  kind: MistakeKind | null;
+  isTurningPoint: boolean;
   evalBeforeCp: number;
   evalAfterCp: number;
   evalBeforeWhite: string;
@@ -64,6 +68,11 @@ export type Mistake = {
   materialAfter: string;
 };
 
+export type Mistake = Omit<AnalysisMove, "kind" | "isTurningPoint"> & {
+  kind: MistakeKind;
+  isTurningPoint: true;
+};
+
 export type GameAnalysis = {
   game: GameSummary;
   side: PlayerSide;
@@ -73,6 +82,7 @@ export type GameAnalysis = {
   engine: string;
   analyzedPositions: number;
   playerMoveCount: number;
+  timeline: AnalysisMove[];
   mistakes: Mistake[];
   generatedAt: string;
 };
